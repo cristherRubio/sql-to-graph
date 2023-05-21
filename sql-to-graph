@@ -1,0 +1,76 @@
+import mysql.connector
+from matplotlib import pyplot as plt
+from matplotlib import dates as mpl_dates
+import numpy as np
+import pandas as pd
+
+# TODO: Check filtering and plotting requirements
+
+
+def main():
+    # Connect & query db
+    q, t1, t2 = query_mysql(cnn_mysql())
+
+    # Generate dataframe as list of dicts
+    df = []
+    for i in q:
+        df.append({
+            "MLS ID": i[0],
+            "Date": i[1],
+            "Property Type": i[2],
+            "Count": i[3], "Sum": i[4],
+            "Average": round(i[4] / i[3])
+        })
+
+    # Generate coordinates
+    y_currency = []
+    x_date = []
+    for d in df:
+        y_currency.append(int(d["Average"]))
+        x_date.append(d["Date"])
+
+    # Plot config
+    plt.style.use('ggplot')
+    plt.plot_date(x_date, y_currency, linestyle='solid', marker=None)
+    plt.title(f'Median Price(USD) of Property Type "{t1}" by Date in "{t2}" area.')
+
+    # Format date on x-axis
+    plt.xlabel("date")
+    plt.gcf().autofmt_xdate()
+    date_format = mpl_dates.DateFormatter("%b, %Y, %d")
+    plt.gca().xaxis.set_major_formatter(date_format)
+
+    # Format Currency on y-axis
+    plt.ylabel("median property price")
+    plt.gca().yaxis.set_major_formatter("${x:,.0f}")
+
+    # Plot
+    plt.legend()
+    plt.show()
+
+
+def cnn_mysql():  # TODO: Add host, user, psw, database as args
+    db = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        passwd="******",
+        database="realstate")
+
+    return db
+
+
+def query_mysql(database):
+    my_cursor = database.cursor()
+    query = """ SELECT * FROM price_by_pt
+                WHERE idx_id =%s AND property_type_id =%s
+                ORDER BY created_at"""
+    mls_id = input("Enter a MLS ID(Metropolitan area): ")
+    p_type = int(input("Enter a property type(1 - 10): "))
+    my_cursor.execute(query, (mls_id, p_type))
+
+    my_result = my_cursor.fetchall()
+    return my_result, mls_id, p_type
+
+
+if __name__ == "__main__":
+    main()
